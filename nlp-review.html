@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP Chapter 1 Review – Preprocessing Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f13;
+  --bg2: #171923;
+  --bg3: #1e2230;
+  --amber: #f5a623;
+  --teal: #4ecdc4;
+  --coral: #ff6b6b;
+  --text: #e8eaf0;
+  --text-muted: #8892a4;
+  --border: #2a3040;
+  --amber-dim: rgba(245,166,35,0.12);
+  --teal-dim: rgba(78,205,196,0.12);
+  --coral-dim: rgba(255,107,107,0.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;line-height:1.65;overflow-x:hidden}
+h1,h2,h3,h4{font-family:'Syne',sans-serif;line-height:1.2}
+code,pre,.mono{font-family:'DM Mono',monospace}
+
+/* NOISE OVERLAY */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.4}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(14,15,19,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem}
+.nav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px}
+.nav-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;color:var(--amber);text-decoration:none;letter-spacing:-0.02em}
+.nav-links{display:flex;gap:0.25rem;list-style:none}
+.nav-links a{color:var(--text-muted);text-decoration:none;font-size:0.875rem;padding:0.4rem 0.75rem;border-radius:6px;transition:color .2s,background .2s}
+.nav-links a:hover,.nav-links a:focus{color:var(--text);background:var(--bg3)}
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:8px;color:var(--text)}
+.hamburger svg{display:block}
+@media(max-width:768px){
+  .nav-links{display:none;position:absolute;top:60px;left:0;right:0;background:var(--bg2);flex-direction:column;padding:1rem;border-bottom:1px solid var(--border)}
+  .nav-links.open{display:flex}
+  .hamburger{display:block}
+}
+
+/* HERO */
+.hero{position:relative;min-height:520px;display:flex;align-items:center;overflow:hidden;padding:5rem 2rem}
+.hero::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 20% 50%,rgba(245,166,35,0.08) 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 80% 30%,rgba(78,205,196,0.06) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 50% 100%,rgba(255,107,107,0.04) 0%,transparent 70%);pointer-events:none;z-index:0}
+.hero-content{position:relative;z-index:1;max-width:1200px;margin:0 auto;width:100%}
+.hero-label{font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--amber);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:1rem}
+.hero h1{font-size:clamp(2.2rem,5vw,4rem);font-weight:800;background:linear-gradient(135deg,#fff 40%,var(--amber) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:1rem}
+.hero p{font-size:1.1rem;color:var(--text-muted);max-width:560px;margin-bottom:2rem}
+.hero-btns{display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:2.5rem}
+.btn{display:inline-flex;align-items:center;gap:0.5rem;padding:0.65rem 1.4rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;transition:all .2s;border:none;text-decoration:none}
+.btn-amber{background:var(--amber);color:#0e0f13}
+.btn-amber:hover{background:#fbb93d;transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-outline:hover{border-color:var(--amber);color:var(--amber)}
+.hero-stats{display:flex;flex-wrap:wrap;gap:2rem}
+.stat{text-align:center}
+.stat-num{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:var(--amber)}
+.stat-label{font-size:0.8rem;color:var(--text-muted);font-family:'DM Mono',monospace;letter-spacing:0.05em}
+
+/* PIPELINE STEPPER */
+.pipeline-strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:1.25rem 2rem;overflow-x:auto}
+.pipeline-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:0.5rem;flex-wrap:nowrap;min-width:max-content}
+.pipe-pill{padding:0.4rem 1rem;border-radius:20px;background:var(--bg3);border:1px solid var(--border);font-family:'DM Mono',monospace;font-size:0.78rem;cursor:pointer;transition:all .2s;color:var(--text-muted);white-space:nowrap}
+.pipe-pill:hover,.pipe-pill:focus{border-color:var(--amber);color:var(--amber);background:var(--amber-dim)}
+.pipe-arrow{color:var(--border);font-size:1rem}
+@keyframes highlight-pulse{0%{box-shadow:0 0 0 0 rgba(245,166,35,0.6)}70%{box-shadow:0 0 0 10px rgba(245,166,35,0)}100%{box-shadow:0 0 0 0 rgba(245,166,35,0)}}
+.topic-highlight{outline:2px solid var(--amber)!important;animation:highlight-pulse 1s ease-out}
+
+/* MAIN LAYOUT */
+main{max-width:1200px;margin:0 auto;padding:2rem}
+
+/* SECTION TITLES */
+.section-title{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;margin-bottom:0.5rem}
+.section-sub{color:var(--text-muted);margin-bottom:2rem;font-size:0.95rem}
+
+/* SEARCH BAR */
+.search-wrap{position:relative;margin-bottom:1.5rem}
+.search-input{width:100%;padding:0.75rem 3rem 0.75rem 1rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.95rem;transition:border-color .2s}
+.search-input:focus{outline:none;border-color:var(--amber)}
+.search-clear{position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;display:none;padding:4px}
+.search-clear.visible{display:block}
+.no-match{text-align:center;padding:2rem;color:var(--text-muted);display:none}
+.no-match.visible{display:block}
+.suggestion-chips{display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;margin-top:1rem}
+.chip{padding:0.3rem 0.8rem;border-radius:16px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;font-size:0.8rem;color:var(--text-muted);transition:all .2s}
+.chip:hover{border-color:var(--amber);color:var(--amber)}
+mark{background:rgba(245,166,35,0.3);color:inherit;border-radius:3px}
+
+/* TOPIC CARDS */
+.topic-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:1rem;overflow:hidden;transition:border-color .2s}
+.topic-card:hover{border-color:var(--bg3)}
+.topic-header{display:flex;align-items:center;gap:1rem;padding:1.25rem 1.5rem;cursor:pointer;user-select:none;background:none;border:none;width:100%;text-align:left;color:var(--text)}
+.topic-header:focus{outline:2px solid var(--amber);outline-offset:-2px}
+.topic-num{font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text-muted);min-width:2rem}
+.topic-title-text{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;flex:1}
+.topic-badge{font-family:'DM Mono',monospace;font-size:0.68rem;padding:0.2rem 0.6rem;border-radius:12px;background:var(--bg3);border:1px solid var(--border);color:var(--text-muted)}
+.topic-teaser{font-style:italic;font-size:0.85rem;color:var(--text-muted);flex:2;display:none}
+@media(min-width:900px){.topic-teaser{display:block}}
+.topic-chevron{font-size:1.2rem;color:var(--text-muted);transition:transform .3s;margin-left:auto}
+.topic-header[aria-expanded="true"] .topic-chevron{transform:rotate(180deg)}
+.topic-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.topic-body-inner{padding:0 1.5rem 1.5rem;display:grid;grid-template-columns:1fr;gap:1.5rem}
+@media(min-width:900px){.topic-body-inner{grid-template-columns:1fr 340px}}
+.topic-left{}
+.definition{font-weight:700;margin-bottom:0.75rem;font-size:0.95rem}
+.topic-left p{color:var(--text-muted);font-size:0.9rem;margin-bottom:0.75rem}
+.callout{border-radius:8px;padding:0.75rem 1rem;font-size:0.875rem;margin-bottom:0.75rem}
+.callout-coral{background:var(--coral-dim);border-left:3px solid var(--coral)}
+.callout-amber{background:var(--amber-dim);border-left:3px solid var(--amber)}
+.callout-label{font-family:'DM Mono',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;opacity:0.7}
+.consequence{font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem;font-style:italic}
+.pipeline-ctx{font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text-muted);padding:0.5rem;background:var(--bg3);border-radius:6px;margin-top:0.75rem}
+.healthcare-card{background:var(--teal-dim);border:1px solid rgba(78,205,196,0.2);border-radius:8px;padding:1rem}
+@media(min-width:900px){.healthcare-card{position:sticky;top:80px}}
+.healthcare-card h4{font-family:'Syne',sans-serif;font-size:0.9rem;color:var(--teal);margin-bottom:0.5rem}
+.healthcare-card p{font-size:0.875rem;color:var(--text-muted)}
+.healthcare-consequence{font-size:0.8rem;color:var(--teal);margin-top:0.75rem;font-style:italic;opacity:0.85}
+
+/* PLAYGROUND */
+#playground{background:var(--bg2);border-radius:16px;padding:2rem;margin-bottom:3rem}
+.playground-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:768px){.playground-grid{grid-template-columns:1fr}}
+.playground-controls{display:flex;flex-direction:column;gap:1rem}
+.playground-textarea{width:100%;min-height:140px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.9rem;padding:0.75rem;resize:vertical;transition:border-color .2s}
+.playground-textarea:focus{outline:none;border-color:var(--amber)}
+.toggle-group{display:flex;flex-wrap:wrap;gap:0.5rem}
+.toggle-btn{padding:0.4rem 0.9rem;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text-muted);font-size:0.8rem;cursor:pointer;transition:all .2s;font-family:'DM Mono',monospace}
+.toggle-btn.active{background:var(--amber);border-color:var(--amber);color:#0e0f13}
+.preset-btns{display:flex;flex-direction:column;gap:0.4rem}
+.preset-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text-muted);text-align:left;padding:0.5rem 0.75rem;border-radius:6px;cursor:pointer;font-size:0.8rem;font-family:'DM Sans',sans-serif;transition:all .2s}
+.preset-btn:hover{border-color:var(--teal);color:var(--teal)}
+.output-panels{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-top:1.5rem}
+.output-panel{background:var(--bg3);border-radius:8px;padding:1rem;border:1px solid var(--border)}
+.output-panel h4{font-family:'DM Mono',monospace;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:0.5rem}
+.output-panel .content{font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--teal);word-break:break-word;min-height:40px}
+.token-chip{display:inline-block;background:rgba(78,205,196,0.15);border:1px solid rgba(78,205,196,0.3);border-radius:4px;padding:0.1rem 0.4rem;margin:0.1rem;font-size:0.75rem}
+.ner-chip{display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.6rem;border-radius:12px;font-size:0.75rem;margin:0.15rem}
+.ner-PERSON{background:rgba(245,166,35,0.2);border:1px solid rgba(245,166,35,0.4);color:var(--amber)}
+.ner-ORG{background:rgba(78,205,196,0.2);border:1px solid rgba(78,205,196,0.4);color:var(--teal)}
+.ner-GPE{background:rgba(130,90,200,0.2);border:1px solid rgba(130,90,200,0.4);color:#a88ff5}
+.ner-MEASURE{background:rgba(255,107,107,0.2);border:1px solid rgba(255,107,107,0.4);color:var(--coral)}
+.ner-label{font-family:'DM Mono',monospace;font-size:0.65rem;opacity:0.8}
+.honesty-box{background:rgba(255,107,107,0.07);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:1rem;margin-top:1rem;font-size:0.85rem}
+.honesty-box strong{color:var(--coral)}
+.custom-sw-wrap{display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem}
+.sw-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0.4rem 0.6rem;font-size:0.85rem;font-family:'DM Sans',sans-serif}
+.sw-input:focus{outline:none;border-color:var(--amber)}
+.sw-pills{display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.4rem}
+.sw-pill{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:0.2rem 0.6rem;font-size:0.75rem;display:flex;align-items:center;gap:0.3rem}
+.sw-pill button{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;padding:0;line-height:1}
+
+/* FLASHCARDS */
+.flashcard-deck{display:flex;flex-direction:column;align-items:center;gap:1.5rem}
+.flashcard-wrap{perspective:1000px;width:100%;max-width:560px;height:200px;cursor:pointer}
+.flashcard{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .5s}
+.flashcard.flipped{transform:rotateY(180deg)}
+.fc-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center}
+.fc-front{background:var(--bg2);border:1px solid var(--amber);color:var(--text)}
+.fc-back{background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--teal);color:var(--teal);transform:rotateY(180deg)}
+.fc-front p{font-family:'Syne',sans-serif;font-size:1rem;font-weight:600}
+.fc-back p{font-size:0.9rem;color:var(--text)}
+.fc-label{font-family:'DM Mono',monospace;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;opacity:0.5;margin-bottom:0.5rem}
+.fc-controls{display:flex;align-items:center;gap:1rem}
+.fc-progress{font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--text-muted)}
+
+/* QUIZ */
+.quiz-wrap{max-width:700px;margin:0 auto}
+.quiz-question{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:1rem}
+.quiz-options{display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1.5rem}
+.quiz-opt{padding:0.75rem 1rem;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;font-size:0.9rem;transition:all .2s;display:flex;align-items:center;gap:0.75rem}
+.quiz-opt:hover{border-color:var(--amber)}
+.quiz-opt.selected{border-color:var(--amber);background:var(--amber-dim)}
+.quiz-opt.correct{border-color:var(--teal);background:var(--teal-dim);color:var(--teal)}
+.quiz-opt.wrong{border-color:var(--coral);background:var(--coral-dim);color:var(--coral)}
+.opt-key{font-family:'DM Mono',monospace;font-size:0.75rem;opacity:0.5;min-width:1rem}
+.quiz-nav{display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap}
+.quiz-counter{font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--text-muted);margin-left:auto}
+.quiz-results{background:var(--bg2);border-radius:12px;padding:2rem;display:none}
+.quiz-score-big{font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;color:var(--amber);text-align:center}
+.quiz-diagnostics{margin-top:1.5rem;display:flex;flex-direction:column;gap:0.75rem}
+.diag-item{padding:0.75rem;border-radius:8px;border:1px solid var(--border);background:var(--bg3);font-size:0.85rem}
+.diag-item.diag-pass{border-color:rgba(78,205,196,0.3)}
+.diag-item.diag-fail{border-color:rgba(255,107,107,0.3)}
+.high-score{font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--amber);margin-top:0.75rem;text-align:center}
+
+/* GLOSSARY */
+.glossary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.gloss-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem}
+.gloss-term{font-family:'Syne',sans-serif;font-weight:700;color:var(--amber);margin-bottom:0.3rem}
+.gloss-def{font-size:0.875rem;color:var(--text-muted)}
+
+/* BACK TO TOP */
+#back-top{position:fixed;bottom:2rem;right:2rem;background:var(--amber);color:#0e0f13;border:none;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:99;box-shadow:0 4px 20px rgba(245,166,35,0.3);transition:transform .2s}
+#back-top.visible{display:flex}
+#back-top:hover{transform:scale(1.1)}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:2rem;text-align:center;color:var(--text-muted);font-size:0.85rem;margin-top:2rem}
+
+/* SECTION SPACING */
+section{padding:3rem 0;scroll-margin-top:70px}
+
+/* UTILITY */
+.hidden{display:none!important}
+.label-sm{font-family:'DM Mono',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:0.5rem}
+.divider{height:1px;background:var(--border);margin:2rem 0}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">NLP §1</a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#topics">Topics</a></li>
+      <li><a href="#playground">Playground</a></li>
+      <li><a href="#flashcards">Flashcards</a></li>
+      <li><a href="#quiz">Quiz</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ul>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="19" y2="6"/><line x1="3" y1="11" x2="19" y2="11"/><line x1="3" y1="16" x2="19" y2="16"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero" id="overview">
+  <div class="hero-content">
+    <div class="hero-label">Chapter 1 · Preprocessing</div>
+    <h1>NLP Preprocessing<br>Pipeline Review</h1>
+    <p>Master the fundamental text-cleaning steps that every NLP pipeline depends on — from raw strings to structured representations.</p>
+    <div class="hero-btns">
+      <a href="#playground" class="btn btn-amber">▶ Jump to Playground</a>
+      <a href="#quiz" class="btn btn-outline">📝 Start Quiz</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">10</div><div class="stat-label">Topics</div></div>
+      <div class="stat"><div class="stat-num">15</div><div class="stat-label">Flashcards</div></div>
+      <div class="stat"><div class="stat-num">10</div><div class="stat-label">Quiz Qs</div></div>
+      <div class="stat"><div class="stat-num">18</div><div class="stat-label">Glossary</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- PIPELINE STEPPER -->
+<div class="pipeline-strip" aria-label="Pipeline overview">
+  <div class="pipeline-inner">
+    <span class="label-sm" style="white-space:nowrap">Pipeline:</span>
+    <button class="pipe-pill" onclick="scrollToTopic('sentence-tokenization')">Tokenize</button>
+    <span class="pipe-arrow">→</span>
+    <button class="pipe-pill" onclick="scrollToTopic('stopwords')">Normalize</button>
+    <span class="pipe-arrow">→</span>
+    <button class="pipe-pill" onclick="scrollToTopic('stopwords')">Stopwords/Punct</button>
+    <span class="pipe-arrow">→</span>
+    <button class="pipe-pill" onclick="scrollToTopic('pos-tagging')">POS</button>
+    <span class="pipe-arrow">→</span>
+    <button class="pipe-pill" onclick="scrollToTopic('ner')">NER</button>
+    <span class="pipe-arrow">→</span>
+    <button class="pipe-pill" onclick="scrollToTopic('transformers-preview')">Vectorize</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main>
+
+<!-- TOPICS -->
+<section id="topics">
+  <h2 class="section-title">Core Topics</h2>
+  <p class="section-sub">10 essential preprocessing concepts. Click to expand, search to filter.</p>
+  
+  <div class="search-wrap">
+    <input class="search-input" id="searchInput" type="text" placeholder="Search topics… e.g. 'tokens', 'POS', 'NER'" aria-label="Search topics" autocomplete="off">
+    <button class="search-clear" id="searchClear" aria-label="Clear search">✕</button>
+  </div>
+  <div class="no-match" id="noMatch" role="status">
+    No topics found. Try:
+    <div class="suggestion-chips">
+      <button class="chip" onclick="fillSearch('tokens')">tokens</button>
+      <button class="chip" onclick="fillSearch('POS')">POS</button>
+      <button class="chip" onclick="fillSearch('NER')">NER</button>
+      <button class="chip" onclick="fillSearch('stem')">stem</button>
+    </div>
+  </div>
+
+  <!-- Topic Cards -->
+  <div id="topicsContainer">
+
+  <!-- 1 Sentence Tokenization -->
+  <article class="topic-card" id="sentence-tokenization">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-1" onclick="toggleTopic(this)">
+      <span class="topic-num mono">01</span>
+      <span class="topic-title-text" data-original="Sentence Tokenization">Sentence Tokenization</span>
+      <span class="topic-badge">Pre-processing</span>
+      <span class="topic-teaser">Splitting text into sentence units — trickier than it sounds.</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-1" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">Sentence tokenization segments a document into individual sentences using punctuation and context heuristics.</p>
+          <p><strong>What it is:</strong> The process of dividing a block of text into discrete sentence units. Tools use rules (sentence-ending punctuation) and trained models to detect boundaries.</p>
+          <p><strong>Why it matters:</strong> Many downstream NLP tasks (translation, summarization, sentiment analysis) operate sentence-by-sentence. Bad boundaries corrupt everything downstream.</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ Pitfall</div>
+            "Dr. Smith treated 3.5M patients." — a naive splitter creates false boundaries at "Dr." and "3.5".
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            "Call me Mr. T. I pity the fool." → a bad splitter treats "Mr." and "T." as sentence ends.
+            <div class="consequence">Consequence: downstream models get nonsensical half-sentences as input.</div>
+          </div>
+          <div class="pipeline-ctx">pipeline: raw_text → [sentence_tokenizer] → sentence_list</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>"Patient reports pain of 8/10. Dr. Lee prescribed 500mg ibuprofen." A naive splitter splits on "10." — creating a broken medical record fragment.</p>
+            <div class="healthcare-consequence">Clinical consequence: clinical NLP extracting diagnoses may miss the full context of a patient complaint.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 2 Word Tokenization -->
+  <article class="topic-card" id="word-tokenization">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-2" onclick="toggleTopic(this)">
+      <span class="topic-num mono">02</span>
+      <span class="topic-title-text" data-original="Word Tokenization">Word Tokenization</span>
+      <span class="topic-badge">Pre-processing</span>
+      <span class="topic-teaser">Splitting text into words — what counts as a word?</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-2" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">Word tokenization splits text into individual word units (tokens) by splitting on whitespace and/or punctuation.</p>
+          <p><strong>What it is:</strong> A token is a sequence of characters treated as a single unit. "I'm fine" can tokenize to ["I", "'m", "fine"] or ["I'm", "fine"] depending on the tokenizer.</p>
+          <p><strong>Why it matters:</strong> Downstream models work on token sequences. Different tokenization strategies produce different vocabularies and model behaviors.</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ Pitfall</div>
+            Contractions: "can't" → ["can't"] or ["can", "'t"] or ["can", "not"]? Each choice changes downstream semantics.
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            "I love New York City" → splitting on spaces yields "New" and "York" and "City" as separate tokens, losing the multi-word entity meaning.
+            <div class="consequence">Consequence: the model treats "New" as a generic adjective rather than part of a proper noun.</div>
+          </div>
+          <div class="pipeline-ctx">pipeline: sentence → [word_tokenizer] → token_list</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>"Administer 0.5mg/kg twice daily." A whitespace tokenizer gives "0.5mg/kg" as one token — a formula tokenizer would split it into value, unit, and route components.</p>
+            <div class="healthcare-consequence">Clinical consequence: a dosing extraction system may fail to parse the numeric value for safety checks.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 3 Stopword Removal -->
+  <article class="topic-card" id="stopwords">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-3" onclick="toggleTopic(this)">
+      <span class="topic-num mono">03</span>
+      <span class="topic-title-text" data-original="Stopword Removal">Stopword Removal</span>
+      <span class="topic-badge">Normalization</span>
+      <span class="topic-teaser">Filtering out high-frequency words — but watch out for negation!</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-3" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">Stopword removal filters out very common, low-information words (the, is, at, which) to reduce noise and vocabulary size.</p>
+          <p><strong>What it is:</strong> A predefined or learned list of words that appear so frequently they add little discriminative power. Common lists include NLTK's English list (~179 words) and spaCy's list (~326 words).</p>
+          <p><strong>Why it matters:</strong> Reduces dimensionality for bag-of-words and TF-IDF models, speeds up processing, and can improve classifier accuracy by removing noise tokens.</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ Critical Pitfall</div>
+            "I do NOT like this" → after removing stopword "not" → "like this". The sentiment completely flips from negative to positive!
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            A review: "It is not bad." → remove stopwords → "bad." Sentiment system now classifies as negative.
+            <div class="consequence">Consequence: a product recommendation engine recommends competitors to a satisfied customer.</div>
+          </div>
+          <div class="pipeline-ctx">pipeline: tokens → [stopword_filter] → content_tokens</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>"Patient does NOT report chest pain." → removing "not" and "does" gives "patient report chest pain" — the opposite of what was recorded.</p>
+            <div class="healthcare-consequence">Clinical consequence: an automated triage system may incorrectly flag a healthy patient as high-risk for cardiac events.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 4 Punctuation Removal -->
+  <article class="topic-card" id="punctuation-removal">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-4" onclick="toggleTopic(this)">
+      <span class="topic-num mono">04</span>
+      <span class="topic-title-text" data-original="Punctuation Removal">Punctuation Removal</span>
+      <span class="topic-badge">Normalization</span>
+      <span class="topic-teaser">Commas can change life-or-death meaning.</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-4" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">Punctuation removal strips non-alphanumeric characters (.,!?;:) to normalize text for bag-of-words models.</p>
+          <p><strong>What it is:</strong> A preprocessing step that removes or replaces punctuation marks, often applied after tokenization. May be total (remove all) or selective (keep hyphens in compound words).</p>
+          <p><strong>Why it matters:</strong> Reduces vocabulary size and ensures "word." and "word" map to the same token. But it must be applied carefully to avoid destroying meaning.</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ Famous Pitfall</div>
+            "Let's eat, grandma!" (an invitation) vs "Let's eat grandma!" (alarming). The comma is meaning-bearing — removing it loses the distinction entirely.
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            "It's a bird. It's a plane. It's Superman!" → stripping periods and apostrophes loses sentence boundaries and contractions.
+            <div class="consequence">Consequence: sentence boundary detection breaks; "Its" and "It's" conflate into the same token.</div>
+          </div>
+          <div class="pipeline-ctx">pipeline: tokens → [punctuation_filter] → clean_tokens</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>"Vitals: BP 120/80, HR 72." — removing "/" and "," gives "BP 12080 HR 72" — numerically garbled vital signs.</p>
+            <div class="healthcare-consequence">Clinical consequence: automated vitals parsing systems extract wrong blood pressure values, triggering false alarms or missing real ones.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 5 Stemming -->
+  <article class="topic-card" id="stemming">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-5" onclick="toggleTopic(this)">
+      <span class="topic-num mono">05</span>
+      <span class="topic-title-text" data-original="Stemming">Stemming</span>
+      <span class="topic-badge">Normalization</span>
+      <span class="topic-teaser">Rule-based root reduction — fast but linguistically brutal.</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-5" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">Stemming reduces a word to its approximate root by mechanically stripping suffixes using rule tables.</p>
+          <p><strong>What it is:</strong> Algorithms like Porter (1980), Snowball, and Lancaster apply cascading suffix-stripping rules. Fast and language-agnostic. Produces pseudo-roots ("stems") that may not be real words.</p>
+          <p><strong>Why it matters:</strong> Groups inflected forms so "running", "runs", "ran" can share a stem for vocabulary matching. Classic IR (information retrieval) uses it heavily.</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ Over-reduction Pitfall</div>
+            "organization" → Porter stem → "organ". Now "organization" and "organ" map to the same stem despite totally different meanings.
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            "caring" → Porter → "car". Your medical chatbot conflates "caring" with "car" in its vocabulary index.
+            <div class="consequence">Consequence: a search for "caring professionals" returns results about automotive services.</div>
+          </div>
+          <div class="pipeline-ctx">pipeline: tokens → [porter_stemmer] → stemmed_tokens</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>"Universal" → "univers"; "universe" → "univers" (correct). But "nursing" → "nurs" and "nurse" → "nurs". These collapse correctly for matching.</p>
+            <div class="healthcare-consequence">Clinical consequence: a medication search for "aspirin" may match "aspirate" after stemming to "aspir" — a serious retrieval error.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 6 Lemmatization -->
+  <article class="topic-card" id="lemmatization">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-6" onclick="toggleTopic(this)">
+      <span class="topic-num mono">06</span>
+      <span class="topic-title-text" data-original="Lemmatization">Lemmatization</span>
+      <span class="topic-badge">Normalization</span>
+      <span class="topic-teaser">Linguistically-informed root reduction using WordNet.</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-6" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">Lemmatization returns the canonical dictionary form (lemma) of a word using morphological analysis and vocabulary lookup.</p>
+          <p><strong>What it is:</strong> Unlike stemming, lemmatization uses WordNet synsets and POS context to return real dictionary words. "better" → "good"; "ran" → "run". Always produces valid words.</p>
+          <p><strong>Why it matters:</strong> More precise than stemming; maintains semantic validity. Used when interpretable vocabulary is needed (e.g., medical term normalization, legal text).</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ POS-Sensitivity Pitfall</div>
+            "running" without POS: could lemmatize to "running" (noun, a race) or "run" (verb). Without POS tag, the lemmatizer makes an arbitrary choice.
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            "She is meeting the meeting organizer." → first "meeting" = VBG → lemma "meet"; second "meeting" = NN → lemma "meeting".
+            <div class="consequence">Consequence: ignoring POS collapses two distinct meanings into one, breaking disambiguation.</div>
+          </div>
+          <div class="pipeline-ctx">pipeline: tokens + POS → [wordnet_lemmatizer] → lemmas</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>"The wound dressing is dressing the wound." → first "dressing" = NN (medical covering); second "dressing" = VBG (applying). POS-aware lemmatization keeps them distinct.</p>
+            <div class="healthcare-consequence">Clinical consequence: conflating "dressing" (noun) and "dress" (verb) corrupts procedure extraction from nursing notes.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 7 POS Tagging -->
+  <article class="topic-card" id="pos-tagging">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-7" onclick="toggleTopic(this)">
+      <span class="topic-num mono">07</span>
+      <span class="topic-title-text" data-original="POS Tagging">POS Tagging</span>
+      <span class="topic-badge">Analysis</span>
+      <span class="topic-teaser">Assigning grammatical roles to tokens — nouns, verbs, adjectives and more.</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-7" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">Part-of-speech tagging labels each token with its grammatical category (NN, VB, JJ, RB…) using context and learned models.</p>
+          <p><strong>What it is:</strong> POS taggers (rule-based, HMM, or neural) assign Penn Treebank or Universal POS tags to tokens. Tags encode whether a word is a noun, verb, adjective, determiner, etc.</p>
+          <p><strong>Why it matters:</strong> Required for lemmatization, parsing, semantic role labeling, and NER. POS context disambiguates words like "bank" (financial institution vs. river bank).</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ Ambiguity Pitfall</div>
+            "Time flies like an arrow." — "flies" can be NN (insects) or VBZ (moves quickly). Without context, a rule-based tagger guesses wrong ~8% of the time.
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            "The rock will rock the concert." → first "rock" = NN; second "rock" = VB. Same spelling, different POS, different meaning.
+            <div class="consequence">Consequence: a search engine that ignores POS returns irrelevant results when users search for "rock bands".</div>
+          </div>
+          <div class="pipeline-ctx">pipeline: tokens → [pos_tagger] → (token, tag) pairs</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>"Patient experienced acute pain." → POS: NN, VBD, JJ, NN. "Acute" tagged as JJ (adjective modifying pain) vs NN (acute as a standalone medical state) changes clinical coding.</p>
+            <div class="healthcare-consequence">Clinical consequence: wrong POS on "acute" could miscategorize encounter type in insurance billing (ICD code assignment).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 8 NER -->
+  <article class="topic-card" id="ner">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-8" onclick="toggleTopic(this)">
+      <span class="topic-num mono">08</span>
+      <span class="topic-title-text" data-original="Named Entity Recognition">Named Entity Recognition</span>
+      <span class="topic-badge">Analysis</span>
+      <span class="topic-teaser">Finding real-world entities: people, places, organizations, dates.</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-8" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">NER identifies and classifies named entities in text into categories such as PERSON, ORG, GPE (location), DATE, and MEASURE.</p>
+          <p><strong>What it is:</strong> Sequence labeling models (CRF, BiLSTM, BERT) assign BIO/BIOES tags to token spans representing real-world entities. Output: spans + labels.</p>
+          <p><strong>Why it matters:</strong> Information extraction, knowledge graph population, question answering, and clinical coding all depend on NER as a foundational step.</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ Capitalization Pitfall</div>
+            "US" (country) vs "us" (pronoun). Naive capitalization heuristics tag "us" at start of sentence as a country, and "US" mid-sentence correctly. Case normalization before NER loses this signal entirely.
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            "May meeting is in May." → first "May" = DATE entity; second "may" (after lowercasing) = auxiliary verb. Case signals entity status.
+            <div class="consequence">Consequence: a calendar extraction tool schedules meetings on the wrong date or misses them entirely.</div>
+          </div>
+          <div class="pipeline-ctx">pipeline: tokens + POS → [ner_model] → entity_spans</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>"Dr. Patel at Mayo Clinic administered 10mg metformin to treat T2DM." NER should extract: PERSON=Dr. Patel, ORG=Mayo Clinic, MEASURE=10mg, CONDITION=T2DM.</p>
+            <div class="healthcare-consequence">Clinical consequence: missing the medication entity in automated EHR extraction means a drug interaction check is never triggered.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 9 Classic Pipeline -->
+  <article class="topic-card" id="classic-pipeline">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-9" onclick="toggleTopic(this)">
+      <span class="topic-num mono">09</span>
+      <span class="topic-title-text" data-original="The Classic NLP Assembly Line">The Classic NLP Assembly Line</span>
+      <span class="topic-badge">Pipeline</span>
+      <span class="topic-teaser">How all the steps connect into a coherent preprocessing chain.</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-9" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">The classic NLP pipeline chains preprocessing steps in a fixed order: tokenize → normalize → filter → analyze → represent.</p>
+          <p><strong>What it is:</strong> A sequential processing architecture where each step's output feeds the next. Typical order: sentence split → word tokenize → lowercase → remove punct → remove stopwords → stem/lemmatize → POS tag → NER → vectorize.</p>
+          <p><strong>Why it matters:</strong> Order matters enormously. Lowercasing before NER destroys capitalization signals. Stemming before POS tagging corrupts morphological cues. Pipeline design encodes implicit assumptions.</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ Order-Dependency Pitfall</div>
+            Lowercasing before NER: "WHO" (World Health Org) → "who" (pronoun). The entity is lost. Always do NER before case normalization.
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            A document analysis pipeline that removes stopwords before POS tagging loses determiners ("the", "a") that signal noun phrases, degrading parsing quality.
+            <div class="consequence">Consequence: noun phrase chunking fails, cascading errors into every downstream analysis step.</div>
+          </div>
+          <div class="pipeline-ctx">raw_text → sentences → tokens → lower → clean → stems → lemmas → POS → NER → vectors</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>A clinical NLP system for EHR analysis: notes → sentence split → tokenize → NER (medications, dosages) → relation extraction → knowledge graph update.</p>
+            <div class="healthcare-consequence">Clinical consequence: a broken pipeline step early on (e.g., bad sentence splitting) silently corrupts every downstream extraction with no error signal.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- 10 Transformers Preview -->
+  <article class="topic-card" id="transformers-preview">
+    <button class="topic-header" aria-expanded="false" aria-controls="body-10" onclick="toggleTopic(this)">
+      <span class="topic-num mono">10</span>
+      <span class="topic-title-text" data-original="Modern NLP: Why Transformers Skip This">Modern NLP: Why Transformers Skip This</span>
+      <span class="topic-badge">Modern NLP</span>
+      <span class="topic-teaser">BERT and GPT learn from raw text — why they need less manual preprocessing.</span>
+      <span class="topic-chevron">⌄</span>
+    </button>
+    <div class="topic-body" id="body-10" role="region">
+      <div class="topic-body-inner">
+        <div class="topic-left">
+          <p class="definition">Transformer models (BERT, GPT, T5) use subword tokenization and contextual embeddings, bypassing most classical preprocessing steps.</p>
+          <p><strong>What it is:</strong> Instead of rule-based pipelines, transformers use WordPiece/BPE tokenization, learn contextual representations from billions of tokens, and handle morphology, POS, and NER implicitly through attention layers.</p>
+          <p><strong>Why it matters:</strong> Understanding classical preprocessing helps you appreciate what transformers learned to avoid and what tradeoffs they make (e.g., tokenization artifacts, computational cost).</p>
+          <div class="callout callout-coral">
+            <div class="callout-label">⚠ Pitfall</div>
+            Transformers still need some preprocessing: lowercasing (for uncased models), special token insertion ([CLS], [SEP]), truncation to max sequence length (512 for BERT). Not zero-preprocessing.
+          </div>
+          <div class="callout callout-amber">
+            <div class="callout-label">💡 Everyday Example</div>
+            BERT handles "running" and "run" naturally — attention learns their relationship. A classical bag-of-words model needs explicit stemming/lemmatization to connect them.
+            <div class="consequence">Consequence: classical models without normalization treat "run", "runs", "running" as 3 unrelated features — wasting vocabulary slots.</div>
+          </div>
+          <div class="pipeline-ctx">raw_text → [bpe_tokenizer] → subword_ids → [transformer] → contextual_embeddings</div>
+        </div>
+        <div>
+          <div class="healthcare-card">
+            <h4>🏥 Healthcare Example</h4>
+            <p>Clinical BERT (BioBERT, ClinicalBERT) pre-trained on PubMed and MIMIC-III handles medical jargon without hand-crafted rules — "myocardial infarction" is tokenized as subwords but the model learns its meaning from context.</p>
+            <div class="healthcare-consequence">Clinical consequence: classical pipelines require expensive domain experts to tune stopword lists and stemmers; BioBERT needs only fine-tuning data, drastically reducing deployment cost.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  </div><!-- end topicsContainer -->
+</section>
+
+<div class="divider"></div>
+
+<!-- PLAYGROUND -->
+<section id="playground">
+  <h2 class="section-title">Interactive Playground</h2>
+  <p class="section-sub">Type text and see each preprocessing step in real time.</p>
+  
+  <div class="honesty-box" style="margin-bottom:1.5rem">
+    <strong>⚠ Demo Notice:</strong> All processing here is a simplified JavaScript demo. Real NLP uses NLTK/spaCy/transformers and handles far more edge cases. Real-system advantages: (1) multi-word entity recognition with trained CRF/neural models, (2) context-sensitive disambiguation for POS and NER, (3) multilingual and morphologically complex language support.
+  </div>
+
+  <div style="background:var(--bg2);border-radius:16px;padding:2rem;border:1px solid var(--border)">
+    <div class="playground-grid">
+      <div class="playground-controls">
+        <div>
+          <div class="label-sm">Input text</div>
+          <textarea class="playground-textarea" id="pgInput" placeholder="Type or paste text here…">The patient Dr. Smith was prescribed 10mg of ibuprofen at the Mayo Clinic.</textarea>
+        </div>
+        <div>
+          <div class="label-sm">Processing toggles</div>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="tog-lower" onclick="toggleOpt('lower')">lowercase</button>
+            <button class="toggle-btn" id="tog-punct" onclick="toggleOpt('punct')">remove punct</button>
+            <button class="toggle-btn active" id="tog-sw" onclick="toggleOpt('sw')">remove stopwords</button>
+            <button class="toggle-btn" id="tog-stem" onclick="toggleOpt('stem')">stemming</button>
+            <button class="toggle-btn" id="tog-lemma" onclick="toggleOpt('lemma')">lemmatization</button>
+          </div>
+        </div>
+        <div>
+          <div class="label-sm">Custom stopwords</div>
+          <div class="custom-sw-wrap">
+            <input class="sw-input" id="swInput" type="text" placeholder="Add word…" onkeydown="if(event.key==='Enter')addCustomSW()">
+            <button class="btn btn-outline" onclick="addCustomSW()" style="padding:0.4rem 0.75rem;font-size:0.8rem">Add</button>
+            <button class="btn btn-outline" onclick="clearCustomSW()" style="padding:0.4rem 0.75rem;font-size:0.8rem;color:var(--coral)">Clear</button>
+          </div>
+          <div class="sw-pills" id="swPills"></div>
+        </div>
+      </div>
+      <div>
+        <div class="label-sm">Load presets</div>
+        <div class="preset-btns">
+          <button class="preset-btn" onclick="loadPreset(`I saw her duck under the table to duck the flying ball.`)">I saw her duck under the table to duck the flying ball.</button>
+          <button class="preset-btn" onclick="loadPreset(`Let's eat, grandma!`)">Let's eat, grandma!</button>
+          <button class="preset-btn" onclick="loadPreset(`Let's eat grandma!`)">Let's eat grandma!</button>
+          <button class="preset-btn" onclick="loadPreset(`I do not like this medication.`)">I do not like this medication.</button>
+          <button class="preset-btn" onclick="loadPreset(`The patient refused the medication after the nurse explained the risks.`)">The patient refused the medication after the nurse explained the risks.</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="output-panels" id="outputPanels">
+      <div class="output-panel"><h4>Original Text</h4><div class="content" id="out-original"></div></div>
+      <div class="output-panel"><h4>Sentences</h4><div class="content" id="out-sentences"></div></div>
+      <div class="output-panel"><h4>Tokens</h4><div class="content" id="out-tokens"></div></div>
+      <div class="output-panel"><h4>Clean Tokens</h4><div class="content" id="out-clean"></div></div>
+      <div class="output-panel"><h4>Stemmed Tokens</h4><div class="content" id="out-stem"></div></div>
+      <div class="output-panel"><h4>Lemmatized Tokens</h4><div class="content" id="out-lemma"></div></div>
+      <div class="output-panel"><h4>POS Tags <span style="font-weight:400;opacity:0.5">(DEMO)</span></h4><div class="content" id="out-pos"></div></div>
+      <div class="output-panel"><h4>NER Entities <span style="font-weight:400;opacity:0.5">(DEMO)</span></h4><div class="content" id="out-ner"></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FLASHCARDS -->
+<section id="flashcards">
+  <h2 class="section-title">Flashcards</h2>
+  <p class="section-sub">Click to flip • ← → navigate • Space to flip</p>
+  <div class="flashcard-deck">
+    <div class="flashcard-wrap" id="fcWrap" onclick="flipCard()" aria-label="Flashcard, click to flip" role="button" tabindex="0">
+      <div class="flashcard" id="flashcard">
+        <div class="fc-face fc-front"><div class="fc-label">Question</div><p id="fcQ"></p></div>
+        <div class="fc-face fc-back"><div class="fc-label">Answer</div><p id="fcA"></p></div>
+      </div>
+    </div>
+    <div class="fc-controls">
+      <button class="btn btn-outline" onclick="prevCard()">← Prev</button>
+      <span class="fc-progress" id="fcProgress">1 / 15</span>
+      <button class="btn btn-outline" onclick="nextCard()">Next →</button>
+      <button class="btn btn-outline" onclick="randomCard()">🎲 Random</button>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- QUIZ -->
+<section id="quiz">
+  <h2 class="section-title">Quiz</h2>
+  <p class="section-sub">10 questions · Press 1–4 to select answers · Randomized each load</p>
+  <div class="quiz-wrap">
+    <div id="quizMain">
+      <div class="quiz-question" id="quizQ"></div>
+      <div class="quiz-options" id="quizOpts"></div>
+      <div class="quiz-nav">
+        <button class="btn btn-outline" id="quizPrevBtn" onclick="quizPrev()">← Back</button>
+        <button class="btn btn-amber" id="quizNextBtn" onclick="quizNext()">Next →</button>
+        <span class="quiz-counter" id="quizCounter">1 / 10</span>
+      </div>
+    </div>
+    <div class="quiz-results" id="quizResults">
+      <div class="quiz-score-big" id="quizScore"></div>
+      <div style="text-align:center;color:var(--text-muted);margin-top:0.5rem" id="quizPct"></div>
+      <div class="high-score" id="highScore"></div>
+      <div class="quiz-diagnostics" id="quizDiag"></div>
+      <div style="margin-top:1.5rem;text-align:center">
+        <button class="btn btn-amber" onclick="restartQuiz()">↻ Retake Quiz</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- GLOSSARY -->
+<section id="glossary">
+  <h2 class="section-title">Glossary</h2>
+  <p class="section-sub">18 essential NLP terms</p>
+  <div class="glossary-grid" id="glossaryGrid"></div>
+</section>
+
+</main>
+
+<footer>
+  <p>NLP Chapter 1 Review · Preprocessing Pipeline · Built for learning</p>
+  <p style="margin-top:0.25rem;font-size:0.75rem">All demos are simplified JavaScript implementations for educational purposes only.</p>
+</footer>
+
+<button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">↑</button>
+
+<script>
+// ═══════════════════════════════════════
+// NAV & HAMBURGER
+// ═══════════════════════════════════════
+document.getElementById('hamburger').addEventListener('click', function() {
+  const links = document.getElementById('navLinks');
+  const open = links.classList.toggle('open');
+  this.setAttribute('aria-expanded', open);
+});
+
+// ═══════════════════════════════════════
+// BACK TO TOP
+// ═══════════════════════════════════════
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('back-top');
+  btn.classList.toggle('visible', window.scrollY > 300);
+});
+
+// ═══════════════════════════════════════
+// PIPELINE PILL SCROLL
+// ═══════════════════════════════════════
+function scrollToTopic(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'start'});
+  el.classList.add('topic-highlight');
+  setTimeout(() => el.classList.remove('topic-highlight'), 1500);
+}
+
+// ═══════════════════════════════════════
+// TOPIC CARDS
+// ═══════════════════════════════════════
+function toggleTopic(btn) {
+  const expanded = btn.getAttribute('aria-expanded') === 'true';
+  const bodyId = btn.getAttribute('aria-controls');
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  btn.setAttribute('aria-expanded', !expanded);
+  if (!expanded) {
+    body.style.maxHeight = body.scrollHeight + 'px';
+    // after open, allow natural height
+    setTimeout(() => { body.style.maxHeight = body.scrollHeight + 5000 + 'px'; }, 410);
+  } else {
+    body.style.maxHeight = body.scrollHeight + 'px';
+    requestAnimationFrame(() => { body.style.maxHeight = '0'; });
+  }
+}
+
+// Keyboard access for cards
+document.querySelectorAll('.topic-header').forEach(btn => {
+  btn.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTopic(btn); }
+  });
+});
+
+// ═══════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+const noMatch = document.getElementById('noMatch');
+let searchTimer;
+
+function fillSearch(val) {
+  searchInput.value = val;
+  searchClear.classList.add('visible');
+  filterTopics(val);
+}
+
+function filterTopics(query) {
+  const cards = document.querySelectorAll('.topic-card');
+  const q = query.trim().toLowerCase();
+  let visCount = 0;
+  cards.forEach(card => {
+    const titleEl = card.querySelector('.topic-title-text');
+    const origTitle = titleEl.getAttribute('data-original');
+    // Restore original
+    titleEl.textContent = origTitle;
+    if (!q) { card.style.display = ''; visCount++; return; }
+    const keywords = (card.textContent || '').toLowerCase();
+    const match = keywords.includes(q);
+    card.style.display = match ? '' : 'none';
+    if (match) {
+      visCount++;
+      // Highlight in title
+      const idx = origTitle.toLowerCase().indexOf(q);
+      if (idx !== -1) {
+        titleEl.innerHTML = origTitle.slice(0, idx) + '<mark>' + origTitle.slice(idx, idx+q.length) + '</mark>' + origTitle.slice(idx+q.length);
+      }
+    }
+  });
+  noMatch.classList.toggle('visible', visCount === 0 && q.length > 0);
+}
+
+searchInput.addEventListener('input', function() {
+  const q = this.value;
+  searchClear.classList.toggle('visible', q.length > 0);
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => filterTopics(q), 150);
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchClear.classList.remove('visible');
+  filterTopics('');
+});
+
+// ═══════════════════════════════════════
+// NLP PROCESSING ENGINE
+// ═══════════════════════════════════════
+
+// === STOPWORDS ===
+const STOPWORDS = new Set(['i','me','my','myself','we','our','ours','ourselves','you','your','yours',
+'yourself','yourselves','he','him','his','himself','she','her','hers','herself','it','its','itself',
+'they','them','their','theirs','themselves','what','which','who','whom','this','that','these','those',
+'am','is','are','was','were','be','been','being','have','has','had','having','do','does','did','doing',
+'a','an','the','and','but','if','or','because','as','until','while','of','at','by','for','with',
+'about','against','between','into','through','during','before','after','above','below','to','from',
+'up','down','in','out','on','off','over','under','again','further','then','once','here','there',
+'when','where','why','how','all','both','each','few','more','most','other','some','such','no','nor',
+'not','only','own','same','so','than','too','very','can','will','just','should','now','s','t',
+'don','doesn','didn','haven','hasn','hadn','won','wouldn','couldn','shouldn','isn','aren','wasn','weren']);
+
+let customStopwords = new Set();
+
+// === PORTER-INSPIRED STEMMER (50+ rules) ===
+const PORTER_RULES = [
+  // Step 1: plurals and -ed/-ing
+  [/sses$/, 'ss'],
+  [/ies$/, 'i'],
+  [/ss$/, 'ss'],
+  [/s$/, ''],
+  [/eed$/, 'ee'],
+  [/ed$/, ''],
+  [/ing$/, ''],
+  // Step 2: y
+  [/ational$/, 'ate'],
+  [/tional$/, 'tion'],
+  [/enci$/, 'ence'],
+  [/anci$/, 'ance'],
+  [/izer$/, 'ize'],
+  [/iser$/, 'ise'],
+  [/abli$/, 'able'],
+  [/alli$/, 'al'],
+  [/entli$/, 'ent'],
+  [/eli$/, 'e'],
+  [/ousli$/, 'ous'],
+  [/ization$/, 'ize'],
+  [/isation$/, 'ise'],
+  [/ation$/, 'ate'],
+  [/ator$/, 'ate'],
+  [/alism$/, 'al'],
+  [/iveness$/, 'ive'],
+  [/fulness$/, 'ful'],
+  [/ousness$/, 'ous'],
+  [/aliti$/, 'al'],
+  [/iviti$/, 'ive'],
+  [/biliti$/, 'ble'],
+  // Step 3
+  [/icate$/, 'ic'],
+  [/ative$/, ''],
+  [/alize$/, 'al'],
+  [/iciti$/, 'ic'],
+  [/ical$/, 'ic'],
+  [/ful$/, ''],
+  [/ness$/, ''],
+  // Step 4
+  [/ement$/, ''],
+  [/ment$/, ''],
+  [/ent$/, ''],
+  [/ance$/, ''],
+  [/ence$/, ''],
+  [/ism$/, ''],
+  [/ate$/, ''],
+  [/iti$/, ''],
+  [/ous$/, ''],
+  [/ive$/, ''],
+  [/ize$/, ''],
+  [/ise$/, ''],
+  [/al$/, ''],
+  [/er$/, ''],
+  [/ic$/, ''],
+  // Step 5
+  [/e$/, ''],
+  [/ll$/, 'l'],
+];
+
+function porterStem(word) {
+  if (word.length <= 2) return word;
+  let w = word.toLowerCase();
+  for (const [re, rep] of PORTER_RULES) {
+    if (re.test(w)) {
+      const stem = w.replace(re, rep);
+      if (stem.length >= 2) { w = stem; break; }
+    }
+  }
+  return w;
+}
+
+// === POS TAGGER ===
+const FUNCTION_WORDS = new Map([
+  ['i','PRP'],['me','PRP'],['my','PRP$'],['mine','PRP$'],['myself','PRP'],
+  ['we','PRP'],['us','PRP'],['our','PRP$'],['ours','PRP$'],['ourselves','PRP'],
+  ['you','PRP'],['your','PRP$'],['yours','PRP$'],['yourself','PRP'],['yourselves','PRP'],
+  ['he','PRP'],['him','PRP'],['his','PRP$'],['himself','PRP'],
+  ['she','PRP'],['her','PRP'],['hers','PRP$'],['herself','PRP'],
+  ['it','PRP'],['its','PRP$'],['itself','PRP'],
+  ['they','PRP'],['them','PRP'],['their','PRP$'],['theirs','PRP$'],['themselves','PRP'],
+  ['who','WP'],['whom','WP'],['whose','WP$'],['which','WDT'],['what','WP'],['that','IN/DT'],
+  ['a','DT'],['an','DT'],['the','DT'],['this','DT'],['that','DT'],['these','DT'],['those','DT'],
+  ['and','CC'],['but','CC'],['or','CC'],['nor','CC'],['for','IN/CC'],['yet','CC'],['so','CC'],
+  ['in','IN'],['on','IN'],['at','IN'],['by','IN'],['to','TO'],['of','IN'],['from','IN'],
+  ['with','IN'],['about','IN'],['against','IN'],['into','IN'],['through','IN'],['during','IN'],
+  ['before','IN'],['after','IN'],['above','IN'],['below','IN'],['up','RP/IN'],['down','RP/IN'],
+  ['over','IN'],['under','IN'],['between','IN'],['among','IN'],['within','IN'],['without','IN'],
+  ['am','VBZ'],['is','VBZ'],['are','VBP'],['was','VBD'],['were','VBD'],['be','VB'],['been','VBN'],['being','VBG'],
+  ['have','VB'],['has','VBZ'],['had','VBD'],['having','VBG'],
+  ['do','VB'],['does','VBZ'],['did','VBD'],['doing','VBG'],['done','VBN'],
+  ['will','MD'],['would','MD'],['shall','MD'],['should','MD'],['can','MD'],['could','MD'],
+  ['may','MD'],['might','MD'],['must','MD'],['ought','MD'],['need','MD'],
+  ['not','RB'],['no','DT/RB'],['never','RB'],['always','RB'],['very','RB'],['just','RB'],
+  ['if','IN'],['because','IN'],['when','WRB'],['where','WRB'],['how','WRB'],['why','WRB'],
+]);
+
+function posTag(tokens) {
+  return tokens.map(tok => {
+    const lower = tok.toLowerCase();
+    if (FUNCTION_WORDS.has(lower)) return [tok, FUNCTION_WORDS.get(lower)];
+    // Morphological rules
+    if (/ing$/.test(lower)) return [tok, 'VBG'];
+    if (/ed$/.test(lower)) return [tok, 'VBD'];
+    if (/ly$/.test(lower)) return [tok, 'RB'];
+    if (/(tion|ment|ness|ity|ism|ance|ence|age|hood)$/.test(lower)) return [tok, 'NN'];
+    if (/(ful|less|ous|ive|al|ic|able|ible)$/.test(lower)) return [tok, 'JJ'];
+    if (/s$/.test(lower) && lower.length > 3) return [tok, 'NNS'];
+    if (/^[A-Z]/.test(tok) && tok !== tokens[0]) return [tok, 'NNP'];
+    if (/^\d+(\.\d+)?$/.test(tok)) return [tok, 'CD'];
+    return [tok, 'NN'];
+  });
+}
+
+// === NER ===
+const TITLES = ['dr','mr','mrs','ms','prof','nurse','doctor','sir','rev','officer','sgt','capt'];
+const GAZETTEER = {
+  'miami':'GPE','florida':'GPE','california':'GPE','new york':'GPE','texas':'GPE','chicago':'GPE',
+  'london':'GPE','paris':'GPE','boston':'GPE','seattle':'GPE','washington':'GPE','atlanta':'GPE',
+  'cdc':'ORG','who':'ORG','fda':'ORG','nih':'ORG','ama':'ORG',
+  'mayo clinic':'ORG','johns hopkins':'ORG','cleveland clinic':'ORG','kaiser':'ORG','pfizer':'ORG',
+  'google':'ORG','microsoft':'ORG','amazon':'ORG','apple':'ORG','meta':'ORG','ibm':'ORG',
+  'january':'DATE','february':'DATE','march':'DATE','april':'DATE','may':'DATE','june':'DATE',
+  'july':'DATE','august':'DATE','september':'DATE','october':'DATE','november':'DATE','december':'DATE',
+  'monday':'DATE','tuesday':'DATE','wednesday':'DATE','thursday':'DATE','friday':'DATE',
+  'saturday':'DATE','sunday':'DATE',
+};
+
+function nerExtract(text) {
+  const entities = [];
+  const lower = text.toLowerCase();
+  // Gazetteer multi-word first
+  for (const [ent, label] of Object.entries(GAZETTEER)) {
+    let idx = lower.indexOf(ent);
+    while (idx !== -1) {
+      entities.push({text: text.slice(idx, idx+ent.length), label});
+      idx = lower.indexOf(ent, idx+1);
+    }
+  }
+  // Title + Name pattern
+  const titlePat = new RegExp('(?:' + TITLES.join('|') + ')\\.?\\s+[A-Z][a-z]+', 'gi');
+  let m;
+  while ((m = titlePat.exec(text)) !== null) {
+    entities.push({text: m[0], label: 'PERSON'});
+  }
+  // Measurements: 0.5mg, 60mL, 120/80, 98.6F, 37°C
+  const measurePat = /\d+(?:\.\d+)?(?:mg|ml|mcg|g|kg|lb|oz|mmhg|°c|°f|f|mEq|units?|mm|cm|m)\b|\d+\/\d+/gi;
+  while ((m = measurePat.exec(text)) !== null) {
+    entities.push({text: m[0], label: 'MEASURE'});
+  }
+  // Deduplicate
+  const seen = new Set();
+  return entities.filter(e => {
+    const k = e.text.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+// Basic lemmatizer lookup
+const LEMMA_MAP = {
+  'running':'run','runs':'run','ran':'run','flies':'fly','flew':'fly','flying':'fly',
+  'better':'good','best':'good','worse':'bad','worst':'bad','was':'be','were':'be','is':'be',
+  'are':'be','am':'be','been':'be','being':'be','has':'have','had':'have','having':'have',
+  'does':'do','did':'do','doing':'do','went':'go','goes':'go','going':'go',
+  'said':'say','says':'say','saying':'say','told':'tell','tells':'tell','telling':'tell',
+  'made':'make','makes':'make','making':'make','found':'find','finds':'find','finding':'find',
+  'came':'come','comes':'come','coming':'come','took':'take','takes':'take','taking':'take',
+  'patients':'patient','nurses':'nurse','doctors':'doctor','medications':'medication',
+  'prescribed':'prescribe','prescribes':'prescribe','prescribing':'prescribe',
+  'refused':'refuse','refuses':'refuse','refusing':'refuse',
+  'explained':'explain','explains':'explain','explaining':'explain',
+  'treated':'treat','treats':'treat','treating':'treat',
+  'eating':'eat','eats':'eat','ate':'eat','eaten':'eat',
+  'ducks':'duck','ducked':'duck','ducking':'duck',
+  'organizations':'organization','caring':'care',
+};
+
+function lemmatize(token) {
+  const lower = token.toLowerCase();
+  if (LEMMA_MAP[lower]) return LEMMA_MAP[lower];
+  // Basic rule: remove -s, -es, -ing, -ed if word stays reasonable
+  let w = lower;
+  if (/ies$/.test(w) && w.length > 4) return w.slice(0,-3)+'y';
+  if (/es$/.test(w) && w.length > 4) return w.slice(0,-2);
+  if (/s$/.test(w) && w.length > 4 && !/ss$/.test(w)) return w.slice(0,-1);
+  return w;
+}
+
+// Abbreviation-aware sentence splitter
+const ABBREVS = ['dr','mr','mrs','ms','prof','inc','ltd','corp','etc','vs','approx','dept','fig','est','jan','feb','mar','apr','jun','jul','aug','sep','oct','nov','dec'];
+
+function sentenceSplit(text) {
+  // Replace known abbreviations with placeholders
+  let t = text;
+  ABBREVS.forEach(a => {
+    t = t.replace(new RegExp('\\b' + a + '\\.', 'gi'), m => m.replace('.', '⦁'));
+  });
+  // Split on .!? followed by space+capital or end
+  const parts = t.split(/(?<=[.!?])\s+(?=[A-Z0-9])/);
+  return parts.map(p => p.replace(/⦁/g, '.').trim()).filter(Boolean);
+}
+
+function wordTokenize(text) {
+  return text.match(/[A-Za-z0-9]+(?:'[a-z]+)?|[.,!?;:'"]/g) || [];
+}
+
+// ═══════════════════════════════════════
+// PLAYGROUND STATE & PROCESSING
+// ═══════════════════════════════════════
+const opts = {lower:true, punct:false, sw:true, stem:false, lemma:false};
+let pgTimer;
+
+function toggleOpt(key) {
+  opts[key] = !opts[key];
+  document.getElementById('tog-'+key).classList.toggle('active', opts[key]);
+  runPlayground();
+}
+
+function loadPreset(text) {
+  document.getElementById('pgInput').value = text;
+  runPlayground();
+}
+
+function addCustomSW() {
+  const inp = document.getElementById('swInput');
+  const val = inp.value.trim().toLowerCase();
+  if (val) { customStopwords.add(val); inp.value = ''; renderSWPills(); if(opts.sw) runPlayground(); }
+}
+
+function clearCustomSW() { customStopwords.clear(); renderSWPills(); if(opts.sw) runPlayground(); }
+
+function renderSWPills() {
+  const container = document.getElementById('swPills');
+  container.innerHTML = '';
+  customStopwords.forEach(w => {
+    const pill = document.createElement('span');
+    pill.className = 'sw-pill';
+    pill.innerHTML = w + '<button onclick="removeCustomSW(\''+w+'\')">×</button>';
+    container.appendChild(pill);
+  });
+}
+
+function removeCustomSW(w) { customStopwords.delete(w); renderSWPills(); if(opts.sw) runPlayground(); }
+
+function renderTokens(tokens, containerId) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = tokens.map(t => `<span class="token-chip">${escHTML(t)}</span>`).join('');
+}
+
+function renderPOS(tagged) {
+  const el = document.getElementById('out-pos');
+  el.innerHTML = tagged.map(([t,p]) => `<span class="token-chip">${escHTML(t)}<span style="opacity:0.5;font-size:0.65rem;display:block">${p}</span></span>`).join('');
+}
+
+function renderNER(entities) {
+  const el = document.getElementById('out-ner');
+  if (!entities.length) { el.innerHTML = '<span style="opacity:0.5">No entities detected</span>'; return; }
+  el.innerHTML = entities.map(e => `<span class="ner-chip ner-${e.label}">${escHTML(e.text)} <span class="ner-label">${e.label}</span></span>`).join('');
+}
+
+function escHTML(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function runPlayground() {
+  const raw = document.getElementById('pgInput').value;
+  document.getElementById('out-original').textContent = raw;
+  // Sentences
+  const sentences = sentenceSplit(raw);
+  document.getElementById('out-sentences').innerHTML = sentences.map((s,i) => `<div style="margin-bottom:0.25rem"><span style="opacity:0.4;font-size:0.7rem">[${i+1}]</span> ${escHTML(s)}</div>`).join('');
+  // Tokens
+  let tokens = wordTokenize(raw);
+  renderTokens(tokens, 'out-tokens');
+  // Clean tokens pipeline
+  let clean = [...tokens];
+  if (opts.lower) clean = clean.map(t => t.toLowerCase());
+  if (opts.punct) clean = clean.filter(t => /[a-z0-9]/i.test(t));
+  if (opts.sw) {
+    const allSW = new Set([...STOPWORDS, ...customStopwords]);
+    clean = clean.filter(t => !allSW.has(t.toLowerCase()));
+  }
+  renderTokens(clean, 'out-clean');
+  // Stemmed
+  const stemmed = clean.map(t => porterStem(t));
+  renderTokens(stemmed, 'out-stem');
+  // Lemmatized
+  const lemmatized = clean.map(t => lemmatize(t));
+  renderTokens(lemmatized, 'out-lemma');
+  // POS on clean tokens
+  renderPOS(posTag(clean));
+  // NER on original (pre-lowercase to preserve casing)
+  renderNER(nerExtract(raw));
+}
+
+document.getElementById('pgInput').addEventListener('input', () => {
+  clearTimeout(pgTimer);
+  pgTimer = setTimeout(runPlayground, 150);
+});
+
+// Initial run
+runPlayground();
+
+// ═══════════════════════════════════════
+// FLASHCARDS
+// ═══════════════════════════════════════
+const FLASHCARDS = [
+  {q:'What is tokenization?', a:'The process of splitting text into smaller units (tokens) such as words, subwords, or characters.'},
+  {q:'What is a stopword?', a:'A high-frequency, low-information word (e.g., "the", "is", "at") typically removed to reduce noise in bag-of-words models.'},
+  {q:'What is stemming?', a:'A rule-based suffix-stripping process that reduces words to their approximate root form. Fast but may produce non-words (e.g., "organization" → "organ").'},
+  {q:'What is lemmatization?', a:'Reducing a word to its canonical dictionary form (lemma) using morphological analysis and POS context. Always returns a valid word.'},
+  {q:'Why does lemmatization need POS tags?', a:'Because the same word can be different parts of speech with different lemmas. "Running" as a noun lemmatizes to "running"; as a verb, to "run".'},
+  {q:'What is POS tagging?', a:'Assigning grammatical categories (noun, verb, adjective, etc.) to each token based on context and morphology.'},
+  {q:'What does NER stand for?', a:'Named Entity Recognition — identifying and classifying real-world entities (PERSON, ORG, GPE, DATE, MEASURE) in text.'},
+  {q:'Why is "not" dangerous to remove as a stopword?', a:'It carries negation meaning. "I do not like this" → after removing "not" → "I like this". Sentiment flips completely.'},
+  {q:'What is the difference between a type and a token?', a:'A token is each occurrence of a word in text. A type is a unique word form. "The cat sat on the mat" has 6 tokens but 5 types ("the" appears twice).'},
+  {q:'What is TF-IDF?', a:'Term Frequency–Inverse Document Frequency. A weighting scheme that increases weight for rare, document-specific terms and decreases it for common terms across the corpus.'},
+  {q:'What is a corpus?', a:'A large, structured collection of texts used for linguistic analysis and training NLP models.'},
+  {q:'Why do transformers need less preprocessing than classical NLP?', a:'They use subword (BPE/WordPiece) tokenization and learn contextual representations from raw text, implicitly learning morphology, POS, and semantics.'},
+  {q:'What is the entity span in NER?', a:'The start and end character offsets (or token indices) that define which part of the text a recognized entity covers.'},
+  {q:'What is the Porter Stemmer\'s main weakness?', a:'Over-stemming: reducing words too aggressively. E.g., "organization" → "organ", conflating two unrelated concepts.'},
+  {q:'What is a synset in WordNet?', a:'A set of synonymous words grouped together representing a single concept. Used in lemmatization and word sense disambiguation.'},
+];
+
+let fcIdx = 0;
+let fcFlipped = false;
+
+function renderFlashcard() {
+  const card = FLASHCARDS[fcIdx];
+  document.getElementById('fcQ').textContent = card.q;
+  document.getElementById('fcA').textContent = card.a;
+  document.getElementById('fcProgress').textContent = (fcIdx+1) + ' / ' + FLASHCARDS.length;
+  const fc = document.getElementById('flashcard');
+  if (fcFlipped) { fc.classList.add('flipped'); } else { fc.classList.remove('flipped'); }
+}
+
+function flipCard() { fcFlipped = !fcFlipped; renderFlashcard(); }
+function nextCard() { fcIdx = (fcIdx+1) % FLASHCARDS.length; fcFlipped = false; renderFlashcard(); }
+function prevCard() { fcIdx = (fcIdx - 1 + FLASHCARDS.length) % FLASHCARDS.length; fcFlipped = false; renderFlashcard(); }
+function randomCard() { fcIdx = Math.floor(Math.random()*FLASHCARDS.length); fcFlipped = false; renderFlashcard(); }
+
+document.getElementById('fcWrap').addEventListener('keydown', e => {
+  if (e.key === ' ') { e.preventDefault(); flipCard(); }
+  if (e.key === 'ArrowRight') nextCard();
+  if (e.key === 'ArrowLeft') prevCard();
+});
+
+renderFlashcard();
+
+// ═══════════════════════════════════════
+// QUIZ
+// ═══════════════════════════════════════
+const QUESTIONS_BASE = [
+  {q:'Which preprocessing step is most likely to flip sentiment by accident?', opts:['Stemming','Stopword removal','Tokenization','Lemmatization'], ans:1, exp:'Removing "not" from "I do NOT like this" → "I like this". Stopword lists often include negations.'},
+  {q:'What does "organization" reduce to with the Porter stemmer?', opts:['organiz','organ','org','organizer'], ans:1, exp:'Porter over-stems "organization" → "organ" — a famous example of over-reduction.'},
+  {q:'Why should NER happen BEFORE lowercasing?', opts:['Lowercase ruins stemming','Capitalization signals proper nouns','NER is faster on lowercase','Lowercase improves POS tagging'], ans:1, exp:'"US" (country) vs "us" (pronoun) are distinguished by case. Lowercasing first loses this signal.'},
+  {q:'What is the main advantage of lemmatization over stemming?', opts:['It is faster','It always returns a valid dictionary word','It handles stopwords','It does not need POS tags'], ans:1, exp:'Lemmatization uses dictionary lookups and morphological analysis to return real words, unlike stemming\'s heuristic suffix stripping.'},
+  {q:'In sentence tokenization, what makes "Dr. Smith went to 3.5M patients." challenging?', opts:['The word Smith','The period after "Dr" and the decimal in "3.5"','The capitalization of patients','The word "went"'], ans:1, exp:'A naive splitter treats the period after "Dr" and in "3.5" as sentence endings, creating false boundaries.'},
+  {q:'What does "BIO" stand for in NER labeling schemes?', opts:['Beginning, Inside, Outside','Baseline, Indexed, Output','Before, In, Over','Binary Input Output'], ans:0, exp:'BIO tags mark Beginning of entity, Inside of entity, and Outside of any entity span.'},
+  {q:'Which tag would "quickly" most likely receive from a morphological POS tagger?', opts:['NN','VBG','RB','DT'], ans:2, exp:'"quickly" ends in -ly, which is a strong adverb morphological signal → RB (adverb).'},
+  {q:'What is the critical order issue in a classic NLP pipeline?', opts:['Stemming must come before tokenization','Lowercasing before NER destroys capitalization cues','Stopwords must be removed before lemmatization','POS tagging cannot follow NER'], ans:1, exp:'Lowercasing converts "WHO" (World Health Organization) to "who" (pronoun), destroying the entity signal.'},
+  {q:'A transformer model like BERT primarily replaces which classical preprocessing step?', opts:['Sentence splitting','Manual bag-of-words feature engineering and normalization','Punctuation removal','File encoding conversion'], ans:1, exp:'BERT\'s subword tokenization and contextual embeddings learn morphology, semantics, and disambiguation automatically.'},
+  {q:'What distinguishes a "type" from a "token" in NLP?', opts:['Types are longer words','A type is a unique word form; a token is each occurrence in text','Tokens appear only once','Types are stopwords'], ans:1, exp:'In "the cat sat on the mat", "the" is one type but two tokens. The type-token ratio measures vocabulary richness.'},
+];
+
+let questions = [];
+let qIdx = 0;
+let selected = [];
+let submitted = false;
+let sessionHigh = 0;
+
+function shuffleArr(arr) {
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function initQuiz() {
+  questions = shuffleArr(QUESTIONS_BASE);
+  qIdx = 0;
+  selected = Array(questions.length).fill(null);
+  submitted = false;
+  document.getElementById('quizMain').style.display = '';
+  document.getElementById('quizResults').style.display = 'none';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = questions[qIdx];
+  document.getElementById('quizQ').textContent = (qIdx+1) + '. ' + q.q;
+  document.getElementById('quizCounter').textContent = (qIdx+1) + ' / ' + questions.length;
+  const optsEl = document.getElementById('quizOpts');
+  optsEl.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt' + (selected[qIdx] === i ? ' selected' : '');
+    btn.innerHTML = `<span class="opt-key">${i+1}</span>${opt}`;
+    btn.onclick = () => selectOpt(i);
+    optsEl.appendChild(btn);
+  });
+  document.getElementById('quizPrevBtn').disabled = qIdx === 0;
+  document.getElementById('quizNextBtn').textContent = qIdx === questions.length - 1 ? 'Submit →' : 'Next →';
+}
+
+function selectOpt(i) {
+  if (submitted) return;
+  selected[qIdx] = i;
+  renderQuestion();
+}
+
+function quizNext() {
+  if (qIdx < questions.length - 1) { qIdx++; renderQuestion(); }
+  else { submitQuiz(); }
+}
+
+function quizPrev() {
+  if (qIdx > 0) { qIdx--; renderQuestion(); }
+}
+
+function submitQuiz() {
+  submitted = true;
+  let score = 0;
+  questions.forEach((q, i) => { if (selected[i] === q.ans) score++; });
+  if (score > sessionHigh) sessionHigh = score;
+  document.getElementById('quizMain').style.display = 'none';
+  const results = document.getElementById('quizResults');
+  results.style.display = 'block';
+  document.getElementById('quizScore').textContent = score + ' / ' + questions.length;
+  document.getElementById('quizPct').textContent = Math.round(score/questions.length*100) + '% correct';
+  document.getElementById('highScore').textContent = '🏆 Session high: ' + sessionHigh + ' / ' + questions.length;
+  const diag = document.getElementById('quizDiag');
+  diag.innerHTML = '';
+  questions.forEach((q, i) => {
+    const pass = selected[i] === q.ans;
+    const div = document.createElement('div');
+    div.className = 'diag-item ' + (pass ? 'diag-pass' : 'diag-fail');
+    div.innerHTML = `<strong style="color:${pass?'var(--teal)':'var(--coral)'}">${pass?'✓':'✗'} Q${i+1}:</strong> ${q.q}<br>
+    <span style="font-size:0.8rem;opacity:0.8">${pass?'Correct!':'Your answer: ' + (selected[i]!==null ? q.opts[selected[i]] : 'Not answered') + ' — Correct: ' + q.opts[q.ans]}</span><br>
+    <em style="font-size:0.78rem;color:var(--text-muted)">${q.exp}</em>`;
+    diag.appendChild(div);
+  });
+}
+
+function restartQuiz() { initQuiz(); }
+
+// Keyboard for quiz
+document.addEventListener('keydown', e => {
+  if (document.getElementById('quizMain').style.display !== 'none') {
+    if (['1','2','3','4'].includes(e.key)) {
+      const i = parseInt(e.key) - 1;
+      if (i < questions[qIdx].opts.length) selectOpt(i);
+    }
+  }
+});
+
+initQuiz();
+
+// ═══════════════════════════════════════
+// GLOSSARY
+// ═══════════════════════════════════════
+const GLOSSARY = [
+  {term:'Token', def:'A sequence of characters treated as a single unit; the output of tokenization (e.g., a word or punctuation mark).'},
+  {term:'Type', def:'A unique word form in a vocabulary. Distinct from token: "the cat sat on the mat" has 6 tokens but 5 types.'},
+  {term:'Corpus', def:'A large, structured collection of texts used for linguistic analysis, model training, or statistical counting.'},
+  {term:'Vocabulary', def:'The complete set of unique types (word forms) in a corpus or recognized by a model.'},
+  {term:'Stopword', def:'A common, low-information word (e.g., "the", "is") often filtered out to reduce noise in bag-of-words models.'},
+  {term:'Stemming', def:'Rule-based suffix stripping that reduces words to approximate roots. Fast but may produce non-words.'},
+  {term:'Lemma', def:'The canonical, base dictionary form of a word (e.g., the lemma of "ran" is "run").'},
+  {term:'Synset', def:'A WordNet grouping of synonymous words representing a single semantic concept, used in lemmatization and WSD.'},
+  {term:'POS', def:'Part-of-Speech. The grammatical category of a token: noun (NN), verb (VB), adjective (JJ), adverb (RB), etc.'},
+  {term:'NER', def:'Named Entity Recognition. Identifying spans of text that name real-world entities: PERSON, ORG, GPE, DATE.'},
+  {term:'Entity Span', def:'The start–end character offsets (or token indices) marking the extent of a named entity in text.'},
+  {term:'Precision', def:'Of all entities the model predicted, the fraction that were correct. Precision = TP / (TP + FP).'},
+  {term:'Recall', def:'Of all true entities in the text, the fraction the model found. Recall = TP / (TP + FN).'},
+  {term:'F1', def:'Harmonic mean of Precision and Recall. F1 = 2×P×R / (P+R). Balances both metrics into a single number.'},
+  {term:'TF-IDF', def:'Term Frequency–Inverse Document Frequency. Weights terms by local frequency but penalizes corpus-wide common terms.'},
+  {term:'Embedding', def:'A dense, low-dimensional vector representation of a word or token capturing semantic relationships.'},
+  {term:'Transformer', def:'A neural architecture using self-attention to model long-range dependencies in sequences without RNNs.'},
+  {term:'Attention', def:'A mechanism allowing a model to weigh the relevance of each token to every other token when building representations.'},
+];
+
+const glossGrid = document.getElementById('glossaryGrid');
+GLOSSARY.forEach(g => {
+  const div = document.createElement('div');
+  div.className = 'gloss-item';
+  div.innerHTML = `<div class="gloss-term">${g.term}</div><div class="gloss-def">${g.def}</div>`;
+  glossGrid.appendChild(div);
+});
+</script>
+</body>
+</html>
